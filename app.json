@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "TuneTalezMobile",
+    "slug": "TuneTalezMobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#121212"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "backgroundColor": "#121212"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#121212"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "themeColor": "#FF0000",
+      "backgroundColor": "#121212"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "tunetalez",
+    "experiments": {
+      "tsconfigPaths": true,
+      "typedRoutes": true
+    },
+    "primaryColor": "#FF0000",
+    "androidStatusBar": {
+      "backgroundColor": "#121212",
+      "barStyle": "light-content"
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#121212",
+      "barStyle": "light-content"
+    }
+  }
+}
