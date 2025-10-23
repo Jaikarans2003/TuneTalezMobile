@@ -6,7 +6,7 @@ export default function BookLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: false,
+        headerShown: false, // This ensures no header is shown
         contentStyle: {
           backgroundColor: Colors.background,
         },

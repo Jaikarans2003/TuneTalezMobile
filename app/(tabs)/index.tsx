@@ -84,6 +84,7 @@ const BookCategory = ({ title, books = [], isLoading = false }: { title: string,
       ) : (
         // Mobile layout - grid with 2 columns
         <FlatList
+          nestedScrollEnabled
           data={books}
           renderItem={({ item }) => (
             <View style={styles.mobileBookCard}>
@@ -212,129 +213,145 @@ export default function HomeScreen() {
     });
   };
   
+  // Hero Banner Component
+  const heroBanner = (
+    <View style={styles.heroBanner}>
+      <View style={styles.heroContent}>
+        <Text style={styles.heroTagline}>Because Every Story Deserves a Voice</Text>
+        <Text style={styles.heroTitle}>TuneTalez</Text>
+        <Text style={styles.heroDescription}>
+          Discover and enjoy a world of stories at your fingertips. Read, listen, and immerse yourself in captivating narratives.
+        </Text>
+        <View style={styles.heroButtons}>
+          <TouchableOpacity style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Explore Content</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Join for Beta</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
+  // Search Bar Component
+  const searchBar = (
+    <View style={styles.searchContainer}>
+      <Ionicons name="search" size={20} color={Colors.textMuted} style={styles.searchIcon} />
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Search books by title, author, or genre..."
+        placeholderTextColor={Colors.textMuted}
+        value={searchTerm}
+        onChangeText={setSearchTerm}
+        onSubmitEditing={handleSearch}
+        returnKeyType="search"
+      />
+      {searchTerm ? (
+        <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+          <Ionicons name="close-circle" size={20} color={Colors.textMuted} />
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+
+  // Search Results Component
+  const searchResultsBlock = isSearching && (
+    <View style={styles.searchResultsContainer}>
+      <View style={styles.searchResultsHeader}>
+        <Text style={styles.searchResultsTitle}>Search Results</Text>
+        <TouchableOpacity onPress={clearSearch}>
+          <Text style={styles.clearSearchText}>Clear</Text>
+        </TouchableOpacity>
+      </View>
+      
+      {isLoading.search ? (
+        <ActivityIndicator size="large" color={Colors.primary} style={styles.searchLoader} />
+      ) : searchResults.length > 0 ? (
+        isWeb ? (
+          // Web layout - grid with 5 columns
+          <View style={styles.webBooksGrid}>
+            {searchResults.map((book, index) => (
+              <View key={book.id || index} style={[styles.webBookCard, { width: (width - 60) / numColumns - 10 }]}>
+                <BookCard book={book} onPress={handleBookPress} />
+              </View>
+            ))}
+          </View>
+        ) : (
+          // Mobile layout - grid with 2 columns
+          <FlatList
+            nestedScrollEnabled
+            data={searchResults}
+            renderItem={({ item }) => (
+              <View style={styles.mobileBookCard}>
+                <BookCard book={item} onPress={handleBookPress} />
+              </View>
+            )}
+            keyExtractor={(item) => item.id}
+            numColumns={numColumns}
+            contentContainerStyle={styles.booksGrid}
+          />
+        )
+      ) : (
+        <Text style={styles.noResultsText}>No books found matching "{searchTerm}"</Text>
+      )}
+    </View>
+  );
+
+  // Book Categories Component
+  const bookCategories = !isSearching && (
+    <>
+      {/* Featured Collection - Always shown if there are books */}
+      <BookCategory 
+        title="Featured Collection" 
+        books={featuredBooks} 
+        isLoading={isLoading.featured} 
+      />
+      
+      {/* History Collection - Only shown if there are books with history tag */}
+      <BookCategory 
+        title="History Collection" 
+        books={historyBooks} 
+        isLoading={isLoading.history} 
+      />
+      
+      {/* Academics Collection - Only shown if there are books with academics tag */}
+      <BookCategory 
+        title="Academics" 
+        books={academicsBooks} 
+        isLoading={isLoading.academics} 
+      />
+      
+      {/* Romance Collection - Only shown if there are books with romance tag */}
+      <BookCategory 
+        title="Romance" 
+        books={romanceBooks} 
+        isLoading={isLoading.romance} 
+      />
+      
+      {/* Sci-Fi Collection - Only shown if there are books with sci-fi tag */}
+      <BookCategory 
+        title="Sci-Fi" 
+        books={sciFiBooks} 
+        isLoading={isLoading.sciFi} 
+      />
+    </>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        {/* Hero Banner */}
-        <View style={styles.heroBanner}>
-          <View style={styles.heroContent}>
-            <Text style={styles.heroTagline}>Because Every Story Deserves a Voice</Text>
-            <Text style={styles.heroTitle}>TuneTalez</Text>
-            <Text style={styles.heroDescription}>
-              Discover and enjoy a world of stories at your fingertips. Read, listen, and immerse yourself in captivating narratives.
-            </Text>
-            <View style={styles.heroButtons}>
-              <TouchableOpacity style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>Explore Content</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Join for Beta</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-        
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color={Colors.textMuted} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search books by title, author, or genre..."
-            placeholderTextColor={Colors.textMuted}
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-          />
-          {searchTerm ? (
-            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-              <Ionicons name="close-circle" size={20} color={Colors.textMuted} />
-            </TouchableOpacity>
-          ) : null}
-        </View>
-        
-        {/* Search Results */}
-        {isSearching && (
-          <View style={styles.searchResultsContainer}>
-            <View style={styles.searchResultsHeader}>
-              <Text style={styles.searchResultsTitle}>Search Results</Text>
-              <TouchableOpacity onPress={clearSearch}>
-                <Text style={styles.clearSearchText}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {isLoading.search ? (
-              <ActivityIndicator size="large" color={Colors.primary} style={styles.searchLoader} />
-            ) : searchResults.length > 0 ? (
-              isWeb ? (
-                // Web layout - grid with 5 columns
-                <View style={styles.webBooksGrid}>
-                  {searchResults.map((book, index) => (
-                    <View key={book.id || index} style={[styles.webBookCard, { width: (width - 60) / numColumns - 10 }]}>
-                      <BookCard book={book} onPress={handleBookPress} />
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                // Mobile layout - grid with 2 columns
-                <FlatList
-                  data={searchResults}
-                  renderItem={({ item }) => (
-                    <View style={styles.mobileBookCard}>
-                      <BookCard book={item} onPress={handleBookPress} />
-                    </View>
-                  )}
-                  keyExtractor={(item) => item.id}
-                  numColumns={numColumns}
-                  contentContainerStyle={styles.booksGrid}
-                />
-              )
-            ) : (
-              <Text style={styles.noResultsText}>No books found matching "{searchTerm}"</Text>
-            )}
-          </View>
-        )}
-        
-        {/* Book Categories - Only show if not searching */}
-        {!isSearching && (
+      <FlatList
+        ListHeaderComponent={
           <>
-            {/* Featured Collection - Always shown if there are books */}
-            <BookCategory 
-              title="Featured Collection" 
-              books={featuredBooks} 
-              isLoading={isLoading.featured} 
-            />
-            
-            {/* History Collection - Only shown if there are books with history tag */}
-            <BookCategory 
-              title="History Collection" 
-              books={historyBooks} 
-              isLoading={isLoading.history} 
-            />
-            
-            {/* Academics Collection - Only shown if there are books with academics tag */}
-            <BookCategory 
-              title="Academics" 
-              books={academicsBooks} 
-              isLoading={isLoading.academics} 
-            />
-            
-            {/* Romance Collection - Only shown if there are books with romance tag */}
-            <BookCategory 
-              title="Romance" 
-              books={romanceBooks} 
-              isLoading={isLoading.romance} 
-            />
-            
-            {/* Sci-Fi Collection - Only shown if there are books with sci-fi tag */}
-            <BookCategory 
-              title="Sci-Fi" 
-              books={sciFiBooks} 
-              isLoading={isLoading.sciFi} 
-            />
+            {heroBanner}
+            {searchBar}
+            {searchResultsBlock}
           </>
-        )}
-      </ScrollView>
+        }
+        data={[]}
+        renderItem={null}
+        ListFooterComponent={bookCategories}
+      />
     </SafeAreaView>
   );
 }

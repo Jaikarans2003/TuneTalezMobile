@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   Platform,
+  FlatList,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,6 +30,14 @@ export default function BookDetailScreen() {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
   
+  // Force hide any global headers
+  React.useEffect(() => {
+    // This ensures we're using the screen in fullscreen mode without any global headers
+    return () => {
+      // Cleanup if needed when component unmounts
+    };
+  }, []);
+  
   useEffect(() => {
     const fetchBook = async () => {
       if (!id) {
@@ -41,8 +50,8 @@ export default function BookDetailScreen() {
         const bookData = await getBookById(id.toString());
         if (bookData) {
           // Sort chapters by order if they exist
-          if (bookData.chapters) {
-            bookData.chapters = bookData.chapters.sort((a, b) => a.order - b.order);
+          if (bookData.chapters?.length > 0) {
+            bookData.chapters = [...bookData.chapters].sort((a, b) => a.order - b.order);
           }
           setBook(bookData);
         } else {
@@ -98,159 +107,167 @@ export default function BookDetailScreen() {
         <View style={{ width: 24 }} />
       </View>
       
-      <ScrollView style={styles.scrollView}>
-        {/* Main content area with sidebar layout on web */}
-        <View style={[
-          styles.contentContainer,
-          isWeb && { flexDirection: 'row' }
-        ]}>
-          {/* Sidebar with book info and chapters list */}
+      <FlatList
+        data={[{ key: 'content' }]}
+        renderItem={() => null}
+        contentContainerStyle={styles.scrollContent}
+        ListHeaderComponent={
           <View style={[
-            styles.sidebar,
-            isWeb ? { width: 300, marginRight: 20 } : { marginBottom: 20 }
+            styles.contentContainer,
+            isWeb && { flexDirection: 'row' }
           ]}>
-            <View style={styles.bookInfoCard}>
-              <Image
-                source={{ uri: book.thumbnailUrl }}
-                style={styles.bookCover}
-                resizeMode="cover"
-              />
-              
-              <View style={styles.bookInfo}>
-                <Text style={styles.bookTitle}>{book.title}</Text>
-                <Text style={styles.bookAuthor}>By {book.author}</Text>
+            {/* Sidebar with book info and chapters list */}
+            <View style={[
+              styles.sidebar,
+              isWeb ? { width: 300, marginRight: 20 } : { marginBottom: 20 }
+            ]}>
+              <View style={styles.bookInfoCard}>
+                <Image
+                  source={{ uri: processThumbnailUrl(book.thumbnailUrl) }}
+                  style={styles.bookCover}
+                  resizeMode="cover"
+                />
                 
-                {book.category && (
-                  <View style={styles.categoryTag}>
-                    <Text style={styles.categoryText}>{book.category}</Text>
-                  </View>
-                )}
+                <View style={styles.bookInfo}>
+                  <Text style={styles.bookTitle}>{book.title}</Text>
+                  <Text style={styles.bookAuthor}>By {book.author}</Text>
+                  
+                  {book.category && (
+                    <View style={styles.categoryTag}>
+                      <Text style={styles.categoryText}>{book.category}</Text>
+                    </View>
+                  )}
+                  
+                  {book.tags && book.tags.length > 0 && (
+                    <View style={styles.tagsContainer}>
+                      {book.tags.map((tag, index) => (
+                        <View key={index} style={styles.tag}>
+                          <Text style={styles.tagText}>{tag}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  
+                  {/* Quick Audio Play Button */}
+                  {book.audioUrl && (
+                    <TouchableOpacity 
+                      style={styles.audioButton}
+                      onPress={toggleAudio}
+                    >
+                      <Ionicons 
+                        name={isAudioPlaying ? "pause-circle" : "play-circle"} 
+                        size={24} 
+                        color={Colors.primary} 
+                      />
+                      <Text style={styles.audioButtonText}>
+                        {isAudioPlaying ? "Pause Audio" : "Play Audio"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
                 
-                {book.tags && book.tags.length > 0 && (
-                  <View style={styles.tagsContainer}>
-                    {book.tags.map((tag, index) => (
-                      <View key={index} style={styles.tag}>
-                        <Text style={styles.tagText}>{tag}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-                
-                {/* Quick Audio Play Button */}
-                {book.audioUrl && (
-                  <TouchableOpacity 
-                    style={styles.audioButton}
-                    onPress={toggleAudio}
-                  >
-                    <Ionicons 
-                      name={isAudioPlaying ? "pause-circle" : "play-circle"} 
-                      size={24} 
-                      color={Colors.primary} 
-                    />
-                    <Text style={styles.audioButtonText}>
-                      {isAudioPlaying ? "Pause Audio" : "Play Audio"}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-              
-              {/* Chapters list */}
-              {book.chapters && book.chapters.length > 0 && (
-                <View style={styles.chaptersContainer}>
-                  <Text style={styles.chaptersTitle}>Episodes</Text>
-                  <ScrollView style={styles.chaptersList} nestedScrollEnabled={true}>
-                    {book.chapters.map((chapter, index) => (
-                      <TouchableOpacity
-                        key={chapter.id}
-                        style={[
-                          styles.chapterItem,
-                          selectedChapterIndex === index && styles.chapterItemSelected
-                        ]}
-                        onPress={() => setSelectedChapterIndex(index)}
-                      >
-                        <Text 
+                {/* Chapters list */}
+                {book.chapters?.length > 0 && (
+                  <View style={styles.chaptersContainer}>
+                    <Text style={styles.chaptersTitle}>Episodes</Text>
+                    <FlatList
+                      data={book.chapters || []}
+                      nestedScrollEnabled
+                      style={styles.chaptersList}
+                      renderItem={({item, index}) => (
+                        <TouchableOpacity
+                          key={item.id}
                           style={[
-                            styles.chapterTitle,
-                            selectedChapterIndex === index && styles.chapterTitleSelected
+                            styles.chapterItem,
+                            selectedChapterIndex === index && styles.chapterItemSelected
                           ]}
-                          numberOfLines={1}
+                          onPress={() => setSelectedChapterIndex(index)}
                         >
-                          {chapter.title}
-                        </Text>
-                        
-                        {chapter.audioUrl && (
-                          <TouchableOpacity
-                            style={styles.chapterAudioButton}
-                            onPress={(e) => {
-                              setSelectedChapterIndex(index);
-                              setIsAudioPlaying(true);
-                            }}
+                          <Text 
+                            style={[
+                              styles.chapterTitle,
+                              selectedChapterIndex === index && styles.chapterTitleSelected
+                            ]}
+                            numberOfLines={1}
                           >
-                            <Ionicons 
-                              name="play-circle" 
-                              size={20} 
-                              color={Colors.primary} 
-                            />
-                          </TouchableOpacity>
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-            </View>
-          </View>
-          
-          {/* Main content */}
-          <View style={[
-            styles.mainContent,
-            isWeb && { flex: 1 }
-          ]}>
-            <View style={styles.contentCard}>
-              <View style={styles.contentHeader}>
-                <Text style={styles.contentTitle}>
-                  {selectedChapter ? selectedChapter.title : book.title}
-                </Text>
-                <View style={styles.contentActions}>
-                  <TouchableOpacity style={styles.actionButton}>
-                    <Ionicons name="heart-outline" size={24} color={Colors.textPrimary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionButton}>
-                    <Ionicons name="bookmark-outline" size={24} color={Colors.textPrimary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionButton}>
-                    <Ionicons name="share-social-outline" size={24} color={Colors.textPrimary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-              
-              {/* Audio Player */}
-              {isAudioPlaying && (
-                <View style={styles.audioPlayerContainer}>
-                  <AudioPlayer
-                    audioUrl={selectedChapter?.audioUrl || book.audioUrl || ''}
-                    title={selectedChapter ? selectedChapter.title : book.title}
-                    onClose={() => setIsAudioPlaying(false)}
-                  />
-                </View>
-              )}
-              
-              {/* Content */}
-              <View style={styles.textContent}>
-                {selectedChapter ? (
-                  <Text style={styles.contentText}>
-                    {selectedChapter.content}
-                  </Text>
-                ) : (
-                  <Text style={styles.contentText}>
-                    {book.content || 'No content available for this book.'}
-                  </Text>
+                            {item.title}
+                          </Text>
+                          
+                          {item.audioUrl && (
+                            <TouchableOpacity
+                              style={styles.chapterAudioButton}
+                              onPress={() => {
+                                setSelectedChapterIndex(index);
+                                setIsAudioPlaying(true);
+                              }}
+                            >
+                              <Ionicons 
+                                name="play-circle" 
+                                size={20} 
+                                color={Colors.primary} 
+                              />
+                            </TouchableOpacity>
+                          )}
+                        </TouchableOpacity>
+                      )}
+                      keyExtractor={(item) => item.id}
+                    />
+                  </View>
                 )}
               </View>
             </View>
+            
+            {/* Main content */}
+            <View style={[
+              styles.mainContent,
+              isWeb && { flex: 1 }
+            ]}>
+              <View style={styles.contentCard}>
+                <View style={styles.contentHeader}>
+                  <Text style={styles.contentTitle}>
+                    {selectedChapter ? selectedChapter.title : book.title}
+                  </Text>
+                  <View style={styles.contentActions}>
+                    <TouchableOpacity style={styles.actionButton}>
+                      <Ionicons name="heart-outline" size={24} color={Colors.textPrimary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton}>
+                      <Ionicons name="bookmark-outline" size={24} color={Colors.textPrimary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton}>
+                      <Ionicons name="share-social-outline" size={24} color={Colors.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                
+                {/* Audio Player */}
+                {isAudioPlaying && (
+                  <View style={styles.audioPlayerContainer}>
+                    <AudioPlayer
+                      audioUrl={processAudioUrl(selectedChapter?.audioUrl || book.audioUrl || '')}
+                      title={selectedChapter ? selectedChapter.title : book.title}
+                      onClose={() => setIsAudioPlaying(false)}
+                    />
+                  </View>
+                )}
+                
+                {/* Content */}
+                <View style={styles.textContent}>
+                  {selectedChapter ? (
+                    <Text style={styles.contentText}>
+                      {selectedChapter.content}
+                    </Text>
+                  ) : (
+                    <Text style={styles.contentText}>
+                      {book.content || 'No content available for this book.'}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -260,8 +277,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  scrollView: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
   },
   loadingContainer: {
     flex: 1,
