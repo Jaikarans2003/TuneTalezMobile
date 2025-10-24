@@ -30,6 +30,9 @@ export const convertBookDoc = (doc: DocumentData): Book => {
     updatedAt = updatedAt.toDate();
   }
   
+  // Process chapters if they exist
+  const chapters = data.chapters || [];
+  
   return {
     id: doc.id,
     title: data.title || '',
@@ -48,7 +51,8 @@ export const convertBookDoc = (doc: DocumentData): Book => {
     isDeleted: data.isDeleted === true, // Default to false
     userId: data.userId || '',
     readCount: data.readCount || 0,
-    status: data.status || 'published'
+    status: data.status || 'published',
+    chapters: chapters
   };
 };
 

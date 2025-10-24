@@ -47,14 +47,39 @@ export default function BookDetailScreen() {
       }
       
       try {
+        console.log('Fetching book with ID:', id.toString());
         const bookData = await getBookById(id.toString());
+        console.log('Book data received:', JSON.stringify(bookData, null, 2));
+        
         if (bookData) {
           // Sort chapters by order if they exist
           if (bookData.chapters?.length > 0) {
+            console.log('Book has chapters:', bookData.chapters.length);
             bookData.chapters = [...bookData.chapters].sort((a, b) => a.order - b.order);
+          } else {
+            console.log('Book has no chapters');
+            // If no chapters exist, create a default chapter with the book content
+            if (bookData.content) {
+              console.log('Creating default chapter from book content');
+              bookData.chapters = [{
+                id: 'default-chapter',
+                title: 'Chapter 1',
+                content: bookData.content,
+                order: 0,
+                bookId: bookData.id
+              }];
+            }
           }
+          
+          if (bookData.content) {
+            console.log('Book has content of length:', bookData.content.length);
+          } else {
+            console.log('Book has no content');
+          }
+          
           setBook(bookData);
         } else {
+          console.log('Book not found in Firestore');
           setError('Book not found');
         }
       } catch (err) {
@@ -73,6 +98,29 @@ export default function BookDetailScreen() {
   };
 
   const selectedChapter = book?.chapters?.[selectedChapterIndex];
+  
+  // Function to format HTML content for display
+  const formatHtmlContent = (htmlContent: string) => {
+    if (!htmlContent) return '';
+    
+    // Replace paragraph tags with line breaks
+    let formattedContent = htmlContent.replace(/<p>/g, '').replace(/<\/p>/g, '\n\n');
+    
+    // Handle strong tags (make text appear normal but preserve content)
+    formattedContent = formattedContent.replace(/<strong>/g, '').replace(/<\/strong>/g, '');
+    
+    // Remove any other HTML tags that might be present
+    formattedContent = formattedContent.replace(/<[^>]*>/g, '');
+    
+    // Replace special characters
+    formattedContent = formattedContent.replace(/&nbsp;/g, ' ');
+    formattedContent = formattedContent.replace(/&amp;/g, '&');
+    formattedContent = formattedContent.replace(/&lt;/g, '<');
+    formattedContent = formattedContent.replace(/&gt;/g, '>');
+    
+    // Trim extra whitespace
+    return formattedContent.trim();
+  };
   
   if (loading) {
     return (
@@ -166,36 +214,36 @@ export default function BookDetailScreen() {
                   )}
                 </View>
                 
-                {/* Chapters list */}
+                {/* Episodes list */}
                 {book.chapters?.length > 0 && (
-                  <View style={styles.chaptersContainer}>
-                    <Text style={styles.chaptersTitle}>Episodes</Text>
+                  <View style={styles.episodesContainer}>
+                    <Text style={styles.episodesTitle}>Episodes</Text>
                     <FlatList
                       data={book.chapters || []}
                       nestedScrollEnabled
-                      style={styles.chaptersList}
+                      style={styles.episodesList}
                       renderItem={({item, index}) => (
                         <TouchableOpacity
                           key={item.id}
                           style={[
-                            styles.chapterItem,
-                            selectedChapterIndex === index && styles.chapterItemSelected
+                            styles.episodeItem,
+                            selectedChapterIndex === index && styles.episodeItemSelected
                           ]}
                           onPress={() => setSelectedChapterIndex(index)}
                         >
                           <Text 
                             style={[
-                              styles.chapterTitle,
-                              selectedChapterIndex === index && styles.chapterTitleSelected
+                              styles.episodeTitle,
+                              selectedChapterIndex === index && styles.episodeTitleSelected
                             ]}
                             numberOfLines={1}
                           >
-                            {item.title}
+                            {item.title || `Episode ${index + 1}`}
                           </Text>
                           
                           {item.audioUrl && (
                             <TouchableOpacity
-                              style={styles.chapterAudioButton}
+                              style={styles.episodeAudioButtonSmall}
                               onPress={() => {
                                 setSelectedChapterIndex(index);
                                 setIsAudioPlaying(true);
@@ -253,14 +301,76 @@ export default function BookDetailScreen() {
                 
                 {/* Content */}
                 <View style={styles.textContent}>
-                  {selectedChapter ? (
-                    <Text style={styles.contentText}>
-                      {selectedChapter.content}
-                    </Text>
+                  {book.chapters?.length > 0 ? (
+                    <>
+                      {/* Episode Tabs */}
+                      <View style={styles.episodeTabs}>
+                        <Text style={styles.episodesTitle}>Episodes:</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                          {book.chapters.map((chapter, index) => (
+                            <TouchableOpacity
+                              key={chapter.id}
+                              style={[
+                                styles.episodeTab,
+                                selectedChapterIndex === index && styles.episodeTabSelected
+                              ]}
+                              onPress={() => setSelectedChapterIndex(index)}
+                            >
+                              <Text 
+                                style={[
+                                  styles.episodeTabText,
+                                  selectedChapterIndex === index && styles.episodeTabTextSelected
+                                ]}
+                              >
+                                {chapter.title || `Episode ${index + 1}`}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                      
+                      {/* Selected Episode Content */}
+                      <ScrollView style={styles.episodeContentScroll}>
+                        <View style={styles.episodeContentContainer}>
+                          <Text style={styles.episodeTitleText}>
+                            {selectedChapter?.title || `Episode ${selectedChapterIndex + 1}`}
+                          </Text>
+                          <Text style={styles.contentText}>
+                            {selectedChapter?.content
+                              ? formatHtmlContent(selectedChapter.content)
+                              : 'Loading episode content...'}
+                          </Text>
+                          {selectedChapter?.audioUrl ? (
+                            <TouchableOpacity
+                              style={styles.episodeAudioButton}
+                              onPress={() => setIsAudioPlaying(true)}
+                            >
+                              <Ionicons
+                                name="play-circle"
+                                size={20}
+                                color={Colors.primary}
+                              />
+                              <Text style={styles.audioButtonText}>Play Audio</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                        </View>
+                      </ScrollView>
+                    </>
                   ) : (
-                    <Text style={styles.contentText}>
-                      {book.content || 'No content available for this book.'}
-                    </Text>
+                    <ScrollView>
+                      {book.content ? (
+                        <Text style={styles.contentText}>
+                          {formatHtmlContent(book.content)}
+                        </Text>
+                      ) : (
+                        <View style={styles.loadingContentContainer}>
+                          <ActivityIndicator size="large" color={Colors.primary} />
+                          <Text style={styles.loadingContentText}>
+                            Loading book content...
+                          </Text>
+                        </View>
+                      )}
+                    </ScrollView>
                   )}
                 </View>
               </View>
@@ -290,6 +400,17 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 10,
     fontSize: 16,
+  },
+  loadingContentContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  loadingContentText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 16,
   },
   errorContainer: {
     flex: 1,
@@ -410,22 +531,22 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontWeight: '600',
   },
-  chaptersContainer: {
+  episodesContainer: {
     marginTop: 16,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
     paddingTop: 16,
   },
-  chaptersTitle: {
+  episodesTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: Colors.textPrimary,
     marginBottom: 12,
   },
-  chaptersList: {
+  episodesList: {
     maxHeight: 300,
   },
-  chapterItem: {
+  episodeItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -437,20 +558,20 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginBottom: 8,
   },
-  chapterItemSelected: {
+  episodeItemSelected: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  chapterTitle: {
+  episodeTitle: {
     color: Colors.textPrimary,
     fontSize: 14,
     flex: 1,
   },
-  chapterTitleSelected: {
+  episodeTitleSelected: {
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
-  chapterAudioButton: {
+  episodeAudioButtonSmall: {
     padding: 4,
   },
   mainContent: {
@@ -483,6 +604,69 @@ const styles = StyleSheet.create({
   },
   contentActions: {
     flexDirection: 'row',
+  },
+  episodeTabs: {
+    marginBottom: 16,
+  },
+  episodesTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+    marginBottom: 8,  
+  },
+  episodeTab: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.cardBackground,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  episodeTabSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  episodeTabText: {
+    fontSize: 14,
+    color: Colors.textPrimary,
+  },
+  episodeTabTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  episodeContentScroll: {
+    flex: 1,
+  },
+  episodeContentContainer: {
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  noContentContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  noContentText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.textSecondary,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  noContentSubText: {
+    fontSize: 14,
+    color: Colors.textTertiary,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  episodeTitleText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    marginBottom: 12,
     alignItems: 'center',
   },
   actionButton: {
